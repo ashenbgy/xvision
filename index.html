@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Xvision: live x-ray vision for your camera. See the skull, brain, muscles and hand bones tracked onto your own image.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080b12">
+<title>Xvision</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1220'/%3E%3Cpath d='M5 16s4-7 11-7 11 7 11 7-4 7-11 7S5 16 5 16z' fill='none' stroke='%237fd1ff' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%237fd1ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 32 32">
+    <path d="M3 16s4.5-8 13-8 13 8 13 8-4.5 8-13 8S3 16 3 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="16" cy="16" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="16" cy="16" r="1.6" fill="currentColor"/>
+  </symbol>
+</svg>
+
+<header class="bar">
+  <div class="brand">
+    <svg class="mark" aria-hidden="true"><use href="#logo"/></svg>
+    <span class="name">Xvision</span>
+    <span class="tag">Live anatomy overlay</span>
+  </div>
+  <div id="status" class="pill" role="status" aria-live="polite">Ready. Start the camera to begin.</div>
+</header>
+
+<div class="app">
+  <main class="stagecol">
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="shade"></canvas>
+      <canvas id="gl"></canvas>
+      <canvas id="hud"></canvas>
+      <div id="intro">
+        <svg class="hero-mark" aria-hidden="true"><use href="#logo"/></svg>
+        <h2>See inside, live.</h2>
+        <p>Xvision tracks your face and hands through your camera and overlays the skull, brain, muscles and hand bones in real time.</p>
+        <button class="big" id="start" type="button">Start camera</button>
+        <ul class="points">
+          <li>Runs in your browser</li>
+          <li>Video never leaves this device</li>
+          <li>Works with face and hands</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <aside aria-label="Controls">
+    <details class="sec" open>
+      <summary>Layers</summary>
+      <div class="seg presets" role="group" aria-label="Layer presets">
+        <button type="button" data-preset="skull">Skull</button>
+        <button type="button" data-preset="brain">Brain</button>
+        <button type="button" data-preset="muscles">Muscles</button>
+        <button type="button" data-preset="all">All</button>
+      </div>
+      <div class="tiles">
+        <label class="tile"><input type="checkbox" id="L_skull"><i style="--c:#bfe3ff"></i>Skull</label>
+        <label class="tile"><input type="checkbox" id="L_brain"><i style="--c:#ff9fc0"></i>Brain</label>
+        <label class="tile"><input type="checkbox" id="L_muscles"><i style="--c:#ff6b5e"></i>Muscles</label>
+        <label class="tile"><input type="checkbox" id="L_eyes"><i style="--c:#fff3a8"></i>Eyes</label>
+        <label class="tile"><input type="checkbox" id="L_outline"><i style="--c:#6fb6ff"></i>Head outline</label>
+        <label class="tile"><input type="checkbox" id="L_hands"><i style="--c:#d9f0ff"></i>Hand bones</label>
+      </div>
+      <label class="switch"><span>Anatomy labels</span><input type="checkbox" id="labels"></label>
+    </details>
+
+    <details class="sec" open>
+      <summary>Appearance</summary>
+      <div class="seg" id="style" role="group" aria-label="Render style">
+        <button type="button" data-style="xray">X-ray</button>
+        <button type="button" data-style="solid">Solid</button>
+      </div>
+      <div class="field"><label for="bright">Brightness</label><input id="bright" type="range" min="0.3" max="2.2" step="0.01"></div>
+    </details>
+
+    <details class="sec" open>
+      <summary>Mixed reality</summary>
+      <div class="field"><label for="real">Real image showing through</label><input id="real" type="range" min="0" max="1" step="0.01"></div>
+      <div class="field"><label for="feather">Edge feather <b id="featherv"></b></label><input id="feather" type="range" min="0" max="1" step="0.01"></div>
+      <div class="field">
+        <label for="reveal">Reveal</label>
+        <select id="reveal">
+          <option value="whole">Whole head</option>
+          <option value="left">Left half only</option>
+          <option value="right">Right half only</option>
+          <option value="top">Top of the head only</option>
+          <option value="bottom">Lower face only</option>
+          <option value="lens">X-ray lens (follows your fingertip)</option>
+        </select>
+      </div>
+      <div class="field" id="cutrow"><label for="cut" id="cutlabel">Cut position</label><input id="cut" type="range" min="0" max="1" step="0.005"></div>
+    </details>
+
+    <details class="sec">
+      <summary>Fit to my head</summary>
+      <div class="field"><label for="fs">Overall size <b id="fsv"></b></label><input id="fs" type="range" min="0.7" max="1.4" step="0.005"></div>
+      <div class="field"><label for="fw">Width <b id="fwv"></b></label><input id="fw" type="range" min="0.8" max="1.25" step="0.005"></div>
+      <div class="field"><label for="fh">Height <b id="fhv"></b></label><input id="fh" type="range" min="0.8" max="1.25" step="0.005"></div>
+      <div class="field"><label for="fd">Depth <b id="fdv"></b></label><input id="fd" type="range" min="0.8" max="1.25" step="0.005"></div>
+      <div class="field"><label for="fx">Left / right <b id="fxv"></b></label><input id="fx" type="range" min="-3" max="3" step="0.1"></div>
+      <div class="field"><label for="fy">Up / down <b id="fyv"></b></label><input id="fy" type="range" min="-4" max="4" step="0.1"></div>
+      <div class="field"><label for="fz">Forward / back <b id="fzv"></b></label><input id="fz" type="range" min="-4" max="4" step="0.1"></div>
+      <button class="ghost" id="fitreset" type="button">Reset fit</button>
+      <p class="small">Tip: choose Solid, set “Real image showing through” to about half, then line the skull up with your face.</p>
+    </details>
+
+    <details class="sec">
+      <summary>Tracking</summary>
+      <div class="field"><label for="smooth">Smoothness <b id="smoothv"></b></label><input id="smooth" type="range" min="0" max="1" step="0.01"></div>
+      <div class="field"><label for="jaw">Mouth opening <b id="jawv"></b></label><input id="jaw" type="range" min="0.5" max="1.6" step="0.01"></div>
+      <p class="small">Higher is steadier when you hold still; lower reacts faster. Fast movement is always followed.</p>
+      <label class="switch"><span>Show tracking data</span><input type="checkbox" id="showdata"></label>
+      <pre id="data" hidden></pre>
+    </details>
+
+    <footer>
+      <p>The anatomy is a real 3D dataset of one adult, scaled and pinned to your head. It shows where structures typically sit, not a scan of you, and is not a medical tool. Video is processed on this computer and never uploaded.</p>
+      <p>Anatomy models: BodyParts3D, © The Database Center for Life Science, CC Attribution-Share Alike 2.1 Japan. Models were simplified and re-aligned.</p>
+    </footer>
+  </aside>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

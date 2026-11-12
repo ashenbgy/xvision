@@ -1,0 +1,6 @@
+{
+  "name": "xvision",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node js/filters.test.mjs" }
+}
